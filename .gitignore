@@ -12,12 +12,3 @@ venv/
 # Packet Tracer backups
 *.pkt.bak
 *.pka.bak
-
-.vs/
-x64/
-Debug/
-Release/
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
