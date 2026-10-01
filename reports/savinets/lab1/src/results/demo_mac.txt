@@ -1,0 +1,28 @@
+Lab 1 | Variant 6 | Replace positions 1, 3, 5, ... with +
+Backend: ARM64 / Apple Silicon (Mac adaptation)
+Compiler: Clang 21.0.0 (clang-2100.3.34.2)
+Input: [abcdef]
+C++:   [+b+d+f]
+ASM:   [+b+d+f]
+Match: YES
+
+Input: [abcde]
+C++:   [+b+d+]
+ASM:   [+b+d+]
+Match: YES
+
+Input: [Привет]
+C++:   [+р+в+т]
+ASM:   [+р+в+т]
+Match: YES
+
+Input: [a b c]
+C++:   [+ + +]
+ASM:   [+ + +]
+Match: YES
+
+Input: []
+C++:   []
+ASM:   []
+Match: YES
+
