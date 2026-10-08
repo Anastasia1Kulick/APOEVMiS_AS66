@@ -59,6 +59,18 @@ __declspec(noinline) std::size_t __cdecl ReplaceSpacesAsm(char* text) noexcept
     return replacements;
 }
 
+// Только отображение: каждый Tab показывается отступом шириной 5 позиций.
+// В обработанной строке остаются настоящие символы табуляции (09h).
+void PrintWithUniformTabs(const std::string& text)
+{
+    for (const char symbol : text) {
+        if (symbol == '\t')
+            std::cout << "     ";
+        else
+            std::cout.put(symbol);
+    }
+}
+
 std::string MakeBenchmarkString()
 {
     std::string result;
@@ -91,9 +103,11 @@ int main()
     const std::size_t asmCount = ReplaceSpacesAsm(asmResult.data());
 
     std::cout << "\nИсходная строка:  " << original
-              << "\nРезультат C++:    " << cppResult
-              << "\nРезультат ASM:    " << asmResult
-              << "\nЗамен C++ / ASM: " << cppCount << " / " << asmCount
+              << "\nРезультат C++:    ";
+    PrintWithUniformTabs(cppResult);
+    std::cout << "\nРезультат ASM:    ";
+    PrintWithUniformTabs(asmResult);
+    std::cout << "\nЗамен C++ / ASM: " << cppCount << " / " << asmCount
               << "\nРезультаты совпадают: "
               << (cppResult == asmResult ? "да" : "нет") << "\n";
 
