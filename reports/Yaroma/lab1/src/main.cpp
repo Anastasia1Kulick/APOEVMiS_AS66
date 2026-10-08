@@ -90,9 +90,9 @@ int main()
     const std::size_t cppCount = ReplaceSpacesCpp(cppResult.data());
     const std::size_t asmCount = ReplaceSpacesAsm(asmResult.data());
 
-    std::cout << "\nИсходная строка: " << original
-              << "\nРезультат C++:   " << cppResult
-              << "\nРезультат ASM:   " << asmResult
+    std::cout << "\nИсходная строка:  " << original
+              << "\nРезультат C++:    " << cppResult
+              << "\nРезультат ASM:    " << asmResult
               << "\nЗамен C++ / ASM: " << cppCount << " / " << asmCount
               << "\nРезультаты совпадают: "
               << (cppResult == asmResult ? "да" : "нет") << "\n";
