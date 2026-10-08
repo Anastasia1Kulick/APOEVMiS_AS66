@@ -59,20 +59,6 @@ __declspec(noinline) std::size_t __cdecl ReplaceSpacesAsm(char* text) noexcept
     return replacements;
 }
 
-void PrintVisible(const std::string& text)
-{
-    std::cout << '"';
-    for (const char symbol : text) {
-        if (symbol == ' ')
-            std::cout << "\\s";
-        else if (symbol == '\t')
-            std::cout << "\\t";
-        else
-            std::cout << symbol;
-    }
-    std::cout << '"';
-}
-
 std::string MakeBenchmarkString()
 {
     std::string result;
@@ -104,13 +90,10 @@ int main()
     const std::size_t cppCount = ReplaceSpacesCpp(cppResult.data());
     const std::size_t asmCount = ReplaceSpacesAsm(asmResult.data());
 
-    std::cout << "\nИсходная строка: ";
-    PrintVisible(original);
-    std::cout << "\nРезультат C++:   ";
-    PrintVisible(cppResult);
-    std::cout << "\nРезультат ASM:   ";
-    PrintVisible(asmResult);
-    std::cout << "\nЗамен C++ / ASM: " << cppCount << " / " << asmCount
+    std::cout << "\nИсходная строка: " << original
+              << "\nРезультат C++:   " << cppResult
+              << "\nРезультат ASM:   " << asmResult
+              << "\nЗамен C++ / ASM: " << cppCount << " / " << asmCount
               << "\nРезультаты совпадают: "
               << (cppResult == asmResult ? "да" : "нет") << "\n";
 
