@@ -1,0 +1,4 @@
+src/.vs/
+src/build/
+src/*.user
+src/*.suo
