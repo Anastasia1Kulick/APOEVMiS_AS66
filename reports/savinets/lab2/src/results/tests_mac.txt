@@ -1,0 +1,4 @@
+Lab 2 | Variant 6
+PASS: 11 known cases, including capital Yo and Latin boundaries
+PASS: 5050 randomized cases, lengths 0..100, boundary guards
+PASS: empty / missing period / invalid UTF-8 / 100 and 101 characters
