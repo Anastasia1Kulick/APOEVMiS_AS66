@@ -6,6 +6,9 @@ includelib kernel32.lib
 printf PROTO C :PTR BYTE, :VARARG
 scanf PROTO C :PTR BYTE, :VARARG
 ExitProcess PROTO STDCALL :DWORD
+GetStdHandle PROTO STDCALL :DWORD
+GetConsoleMode PROTO STDCALL :DWORD, :DWORD
+getchar PROTO C
 .data
 intro BYTE "Lab 4, variant 1. x87 coprocessor",13,10,"1 - integer operands, 2 - real operands",13,10,"Mode: ",0
 prompt BYTE "Enter x and y: ",0
@@ -14,6 +17,8 @@ formatInts BYTE "%d %d",0
 formatReals BYTE "%lf %lf",0
 formatOut BYTE "Result: %.8f",13,10,0
 err BYTE "Invalid input.",13,10,0
+exitMsg BYTE "Press Enter to close.",13,10,0
+consoleMode DWORD 0
 mode DWORD 0
 ix SDWORD 0
 iy SDWORD 0
@@ -177,6 +182,22 @@ realInvalid:
  mov eax,1
  ret
 CalculateReal ENDP
+WaitForExit PROC
+ invoke GetStdHandle, -10
+ invoke GetConsoleMode, eax, ADDR consoleMode
+ test eax,eax
+ jz waitDone
+ invoke printf, ADDR exitMsg
+drainLine:
+ invoke getchar
+ cmp eax,-1
+ je waitDone
+ cmp eax,10
+ jne drainLine
+ invoke getchar
+waitDone:
+ ret
+WaitForExit ENDP
 main PROC
  invoke printf, ADDR intro
  invoke scanf, ADDR formatMode, ADDR mode
@@ -202,9 +223,11 @@ readInteger:
  call CalculateInteger
 showResult:
  invoke printf, ADDR formatOut, DWORD PTR result, DWORD PTR result+4
+ call WaitForExit
  invoke ExitProcess, 0
 invalid:
  invoke printf, ADDR err
+ call WaitForExit
  invoke ExitProcess, 1
 main ENDP
 END main
