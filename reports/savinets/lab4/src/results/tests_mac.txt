@@ -1,0 +1,5 @@
+PASS 20035 numerical cases
+PASS exact-sum 26 cases
+PASS Fraction 14548 cases; {'middle': 9694, 'exact boundary': 4836, 'rounded boundary, not equal': 86, 'low': 2426, 'high': 2428}
+PASS 16 CLI values + 21 invalid inputs
+PASS subnormal CLI 7 accepted + 2 underflow rejected
