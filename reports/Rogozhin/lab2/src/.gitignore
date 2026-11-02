@@ -1,0 +1,19 @@
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Packet Tracer backups
+*.pkt.bak
+*.pka.bak
+*.obj
+*.exe
+*.ilk
+*.pdb
+*.lst

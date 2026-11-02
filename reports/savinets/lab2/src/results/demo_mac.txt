@@ -1,0 +1,40 @@
+Lab 2 | Variant 6
+
+Input: AaБб.
+Enter 1..100 characters, end with a period.
+Condition: uppercase Latin count equals uppercase Russian count (including Yo).
+If true: swap case of Latin letters.
+Original: AaБб
+Condition: TRUE
+Result: aAБб
+
+Input: ABCА.
+Enter 1..100 characters, end with a period.
+Condition: uppercase Latin count equals uppercase Russian count (including Yo).
+If true: swap case of Latin letters.
+Original: ABCА
+Condition: FALSE
+Transformation skipped.
+Result: ABCА
+
+Input: AЁ.
+Enter 1..100 characters, end with a period.
+Condition: uppercase Latin count equals uppercase Russian count (including Yo).
+If true: swap case of Latin letters.
+Original: AЁ
+Condition: TRUE
+Result: aЁ
+
+Input: abc 123.
+Enter 1..100 characters, end with a period.
+Condition: uppercase Latin count equals uppercase Russian count (including Yo).
+If true: swap case of Latin letters.
+Original: abc 123
+Condition: TRUE
+Result: ABC 123
+
+Input: .
+Enter 1..100 characters, end with a period.
+Condition: uppercase Latin count equals uppercase Russian count (including Yo).
+If true: swap case of Latin letters.
+Rejected: Empty text

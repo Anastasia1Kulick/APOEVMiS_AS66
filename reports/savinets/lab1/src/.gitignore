@@ -1,0 +1,5 @@
+build/
+*.o
+*.obj
+*.dSYM/
+.DS_Store

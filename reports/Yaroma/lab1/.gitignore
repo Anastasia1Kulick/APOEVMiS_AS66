@@ -1,0 +1,11 @@
+# Visual Studio settings and build outputs.
+src/.vs/
+src/build/
+src/ipch/
+src/*.user
+src/*.suo
+src/*.VC.db
+src/*.VC.VC.opendb
+src/Debug/
+src/Release/
+src/x64/
