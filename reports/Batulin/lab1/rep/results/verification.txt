@@ -1,0 +1,11 @@
+PASS CLI: 'ABCDEFGH' + '12345678' => 'ABCD1234'; exit=0
+PASS CLI: 'abcde' + '1234567' => 'ab123'; exit=0
+PASS CLI: '' + 'abcd' => 'ab'; exit=0
+PASS CLI: '' + '' => ''; exit=0
+PASS CLI: 'а бвгд' + '123456' => 'а б123'; exit=0
+PASS CLI: 'Привет' + 'Михаил' => 'ПриМих'; exit=0
+PASS CLI: missing second input => exit=1
+PASS CLI: unknown option => exit=2
+PASS Release / Win32: 308 cases, both implementations; exit=0
+PASS Debug / Win32: 308 cases, both implementations; exit=0
+Verified 2026-11-05. MSVC 19.51; native x86 executable.
