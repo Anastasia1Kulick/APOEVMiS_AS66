@@ -1,0 +1,61 @@
+Лабораторная 5, вариант 12. Ярома А. И., АС-66.
+Wireshark 4.6.10 Portable; Windows PktMon; 19.11.2026.
+
+Адрес сайта в опыте: 72.247.69.67 (www.huawei.com), TCP 443.
+IPv4 компьютера Wi-Fi: 100.70.47.58, MAC a0:b3:39:db:30:ee.
+Шлюз Wi-Fi: 100.70.0.1, MAC 00:00:5e:00:52:13.
+IPv4 VPN: 100.127.255.253.
+PktMon: 91 = TCPIP интерфейса VPN; 134 = TCPIP интерфейса Wi-Fi.
+
+ОБЫЧНЫЕ ФИЛЬТРЫ ОТОБРАЖЕНИЯ WIRESHARK
+IPv4: ip
+TCP выбранного сеанса: tcp.stream == 0
+Третий пакет основного захвата: frame.number == 3
+Локальный ping: icmp && ip.src == 100.70.47.58 && ip.dst == 100.70.47.58
+ARP: arp
+
+ТРИ НЕЗАВИСИМЫХ ФИЛЬТРА ЗАХВАТА
+Каждый файл получен отдельным запуском и остановкой PktMon; фильтрация происходила до записи пакетов.
+
+1. HTTPS выбранного адреса.
+Логическое условие: ip.proto == 6 && ip.addr == 72.247.69.67 && tcp.port == 443.
+ip.addr означает совпадение адреса источника ИЛИ получателя, tcp.port — любого из портов.
+PktMon: pktmon filter add Lab5HTTPS -i 72.247.69.67 -t TCP -p 443
+BPF-эквивалент: ip and host 72.247.69.67 and tcp port 443
+Результат: filter_https.pcapng, 163 пакета.
+
+2. Только установление TCP-соединения с тем же адресом.
+Логическое условие: ip.proto == 6 && ip.addr == 72.247.69.67 && tcp.port == 443 && tcp.flags.syn == 1.
+PktMon: pktmon filter add Lab5SYN -d IPv4 -i 72.247.69.67 -t TCP SYN -p 443
+BPF-эквивалент: ip and host 72.247.69.67 and tcp port 443 and (tcp[13] & 2 != 0)
+Результат: filter_syn.pcapng, 2 пакета: SYN и SYN/ACK. SYN/ACK также имеет установленный SYN.
+
+3. ICMP между своим компьютером и шлюзом.
+Логическое условие: ip.proto == 1 && ip.addr == 100.70.47.58 && ip.addr == 100.70.0.1.
+PktMon: pktmon filter add Lab5ICMP -d IPv4 -t ICMP -i 100.70.47.58 100.70.0.1
+BPF-эквивалент: ip and icmp and host 100.70.47.58 and host 100.70.0.1
+Результат: filter_icmp.pcapng, 8 пакетов: четыре запроса и четыре ответа шлюза.
+
+ПОРЯДОК ПОВТОРЕНИЯ ЗАХВАТА В PKTMON
+Работа в PowerShell с правами администратора; текущая папка должна быть на D.
+Не останавливайте чужой активный захват и не удаляйте чужие фильтры: сначала pktmon status и pktmon filter list.
+Добавьте ОДИН из фильтров выше. Затем:
+pktmon start --capture --comp 91 --pkt-size 0 --flags 0x1F --log-mode memory --file-size 32
+curl.exe --location --fail --max-time 25 --output huawei_page.html https://www.huawei.com/
+Подождите 2 секунды для завершения соединения.
+pktmon stop
+pktmon etl2pcap PktMon.etl --out capture_original.pcapng
+pktmon filter remove Lab5HTTPS
+
+Для второго фильтра удаляйте Lab5SYN. Для третьего используйте --comp 134, команду
+ping -4 -n 4 100.70.0.1, затем удаляйте Lab5ICMP.
+В режиме memory эта версия PktMon записывает PktMon.etl в текущую папку; перед каждым опытом сохраняйте предыдущий файл под отдельным именем.
+Для исходящего из VPN захвата с сырыми IPv4-пакетами исправление только метаданных инкапсуляции:
+editcap.exe -T rawip capture_original.pcapng capture.pcapng
+Для Ethernet-захвата ICMP шлюза и ARP это исправление НЕ применять.
+
+ARP получен отдельным захватом с фильтром -d ARP -m A0-B3-39-DB-30-EE на компоненте 134.
+Для вызова нового запроса удалена только запись шлюза из ARP-кэша, затем выполнен ping шлюза.
+Сразу после ответа соответствие IPv4/MAC восстановилось; остальной кэш не очищался.
+
+Локальный ping собственного адреса записан raw socket Windows, потому что локальная доставка не выходит на сетевой адаптер PktMon. Сохранены только реальные IPv4/ICMP-пакеты с источником и получателем 100.70.47.58; четыре запроса и четыре ответа. Точка наблюдения здесь отличается от Ethernet-захвата шлюза.
