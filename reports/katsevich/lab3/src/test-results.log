@@ -1,0 +1,40 @@
+$ ./build.sh
+Сборка завершена: build/lab3, build/tests
+PASS first expansion: null with zero length
+PASS first expansion: one space
+PASS first expansion: empty
+PASS first expansion: spaces only
+PASS first expansion: no spaces
+PASS first expansion: repeated and edge spaces
+PASS first expansion: UTF-8 Russian
+PASS first expansion: tab is not space
+PASS first expansion: nonbreaking space
+PASS first expansion: embedded NUL
+PASS first expansion: all ASCII bytes
+PASS first expansion: long line
+PASS first expansion: 5000 random byte sequences
+PASS second expansion: null with zero length
+PASS second expansion: one space
+PASS second expansion: empty
+PASS second expansion: spaces only
+PASS second expansion: no spaces
+PASS second expansion: repeated and edge spaces
+PASS second expansion: UTF-8 Russian
+PASS second expansion: tab is not space
+PASS second expansion: nonbreaking space
+PASS second expansion: embedded NUL
+PASS second expansion: all ASCII bytes
+PASS second expansion: long line
+PASS second expansion: 5000 random byte sequences
+All assembly tests passed.
+PASS CLI: empty
+PASS CLI: spaces only
+PASS CLI: no spaces
+PASS CLI: repeated and edge spaces
+PASS CLI: UTF-8 Russian
+PASS CLI: tabs and nonbreaking space
+PASS CLI: long line
+PASS CLI: unterminated input line
+PASS CLI: embedded NUL
+PASS CLI: EOF
+CLI: 10 cases passed
