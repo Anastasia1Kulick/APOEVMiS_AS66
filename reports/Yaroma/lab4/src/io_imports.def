@@ -1,0 +1,9 @@
+LIBRARY msvcrt.dll
+EXPORTS
+    printf
+    fflush
+    getchar
+    strtol
+    strtod
+    _errno
+    exit

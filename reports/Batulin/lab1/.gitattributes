@@ -1,0 +1,9 @@
+*.cpp text eol=crlf
+*.h text eol=crlf
+*.cmd text eol=crlf
+*.sln text eol=crlf
+*.vcxproj text eol=crlf
+*.md text eol=lf
+*.txt text eol=lf
+*.pdf binary
+*.png binary

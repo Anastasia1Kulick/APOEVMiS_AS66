@@ -1,0 +1,23 @@
+LAB 1 | VARIANT 5 | Batulin Mikhail | AS-66
+Join the first halves of two strings (floor(length / 2)).
+
+String 1: [ABCDEFGH]  length=8, half=4
+String 2: [12345678]  length=8, half=4
+C++:      [ABCD1234]
+ASM:      [ABCD1234]
+MATCH
+
+String 1: [abcde]  length=5, half=2
+String 2: [1234567]  length=7, half=3
+C++:      [ab123]
+ASM:      [ab123]
+MATCH
+
+String 1: []  length=0, half=0
+String 2: [abcd]  length=4, half=2
+C++:      [ab]
+ASM:      [ab]
+MATCH
+
+PASS: 308 cases, both C++ and x86 ASM.
+Checked: empty/odd/unequal lengths, spaces, terminator, guard, unchanged inputs.
