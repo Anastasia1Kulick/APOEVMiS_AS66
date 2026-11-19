@@ -1,0 +1,98 @@
+{
+  "arp_gateway.pcapng": {
+    "packets": 2,
+    "bytes": 84,
+    "duration": 0.06145596504211426,
+    "min_bytes": 42,
+    "max_bytes": 42,
+    "mean_bytes": 42.0,
+    "packets_per_second": 32.543626947025395,
+    "bytes_per_second": 1366.8323317750665,
+    "display_protocols": {
+      "ARP": 2
+    },
+    "ip_protocols": {}
+  },
+  "filter_https.pcapng": {
+    "packets": 163,
+    "bytes": 144213,
+    "duration": 0.9323329925537109,
+    "min_bytes": 40,
+    "max_bytes": 1500,
+    "mean_bytes": 884.7423312883435,
+    "packets_per_second": 174.83023909036416,
+    "bytes_per_second": 154679.7133125073,
+    "display_protocols": {
+      "TCP": 139,
+      "TLSv1.2": 24
+    },
+    "ip_protocols": {
+      "6": 163
+    }
+  },
+  "filter_icmp.pcapng": {
+    "packets": 8,
+    "bytes": 592,
+    "duration": 3.0300052165985107,
+    "min_bytes": 74,
+    "max_bytes": 74,
+    "mean_bytes": 74.0,
+    "packets_per_second": 2.640259480800767,
+    "bytes_per_second": 195.37920157925677,
+    "display_protocols": {
+      "ICMP": 8
+    },
+    "ip_protocols": {
+      "1": 8
+    }
+  },
+  "filter_syn.pcapng": {
+    "packets": 2,
+    "bytes": 100,
+    "duration": 0.0003509521484375,
+    "min_bytes": 48,
+    "max_bytes": 52,
+    "mean_bytes": 50.0,
+    "packets_per_second": 5698.782608695652,
+    "bytes_per_second": 284939.1304347826,
+    "display_protocols": {
+      "TCP": 2
+    },
+    "ip_protocols": {
+      "6": 2
+    }
+  },
+  "huawei.pcapng": {
+    "packets": 168,
+    "bytes": 144444,
+    "duration": 1.1175260543823242,
+    "min_bytes": 40,
+    "max_bytes": 1500,
+    "mean_bytes": 859.7857142857143,
+    "packets_per_second": 150.33206549520358,
+    "bytes_per_second": 129253.36231184039,
+    "display_protocols": {
+      "TCP": 144,
+      "TLSv1.2": 24
+    },
+    "ip_protocols": {
+      "6": 168
+    }
+  },
+  "ping_self.pcapng": {
+    "packets": 8,
+    "bytes": 480,
+    "duration": 3.027353048324585,
+    "min_bytes": 60,
+    "max_bytes": 60,
+    "mean_bytes": 60.0,
+    "packets_per_second": 2.6425725286409545,
+    "bytes_per_second": 158.55435171845727,
+    "display_protocols": {
+      "ICMP": 8
+    },
+    "ip_protocols": {
+      "1": 8
+    }
+  }
+}
