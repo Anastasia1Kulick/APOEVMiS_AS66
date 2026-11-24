@@ -4,7 +4,7 @@
 https://drive.google.com/file/d/18OdZ3tSw8mmfiVtORAj8f8PJTLvMJot5/view?usp=drive_link
 
 ссылка на электронную очередь:
-https://docs.google.com/spreadsheets/d/1FFfxMHh_qEtyVldmp9tDRgwITp5Y6SA4VW2Xh6iDvrs/edit?usp=sharing
+https://docs.google.com/spreadsheets/d/1x0B7XcSn1XExBNB0QCyTq5gPPODQ6tboEs2Ct2TDWYc/edit?usp=drivesdk
 
 ссылка на электронную ведомость:
 https://docs.google.com/spreadsheets/d/1esBjBMWBkn2GBHyKEAzKP-CuAJUphPBEWrAmjG0f6pg/edit?usp=sharing
