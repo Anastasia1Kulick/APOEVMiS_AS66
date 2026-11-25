@@ -1,14 +1,6 @@
 ; Laboratory work No. 4. Variant 4
-; Coprocessor (x87 FPU) programming.
-; Function f(x, y):
-;     2*x*y + 3                  if x - y > 9
-;     3*y^2 / (x^2 + 2*y + 1)    if x - y < -6
-;     2*x^2 - 2*y + 1            if -6 <= x - y <= 9
-;
-; Part 1 uses the integer FPU instructions (FILD, FIADD, FIMUL, FISUB, FISTP),
-; Part 2 uses the real FPU instructions (FLD, FADD, FMUL, FSUB, FSTP).
-;
-; MASM, x64, Windows console (Visual Studio, ml64).
+; FPU (x87) calculations for piecewise function.
+; MASM x64, Windows console. Visual Studio (ml64).
 
 OPTION CASEMAP:NONE
 
@@ -19,69 +11,66 @@ ReadFile     PROTO
 WriteFile    PROTO
 ExitProcess  PROTO
 
-STD_INPUT_HANDLE  EQU -10
-STD_OUTPUT_HANDLE EQU -11
+STD_IN_HANDLE   EQU -10
+STD_OUT_HANDLE  EQU -11
+BUF_SIZE        EQU 256
 
-INPUT_BUF_SIZE    EQU 256       ; size of the input buffer
+; --- constants for integer part ---
+C_1     dd 1
+C_2     dd 2
+C_3     dd 3
+C_6     dd 6
+C_9     dd 9
+C_M6    dd -6
+C_10    dd 10
+C_1000  dd 1000
+
+; --- constants for real part ---
+R_2     REAL8 2.0
+R_3     REAL8 3.0
+R_6     REAL8 6.0
+R_9     REAL8 9.0
+R_M6    REAL8 -6.0
+R_MUL   REAL8 1000000.0
 
 .const
 
-kI1     dd 1
-kI2     dd 2
-kI3     dd 3
-kI6     dd 6
-kI9     dd 9
-kIm6    dd -6
-kI10    dd 10
-kI1000  dd 1000
-kR2     REAL8 2.0
-kR3     REAL8 3.0
-kR6     REAL8 6.0
-kR9     REAL8 9.0
-kRm6    REAL8 -6.0
-kR1e6   REAL8 1000000.0
-
-msgTitle     db "Laboratory work No. 4. Variant 4", 13, 10, 13, 10, 0
-msgTask      db "Function f(x, y):", 13, 10
-             db "    2*x*y + 3                  if x - y > 9", 13, 10
-             db "    3*y^2 / (x^2 + 2*y + 1)    if x - y < -6", 13, 10
-             db "    2*x^2 - 2*y + 1            if -6 <= x - y <= 9", 13, 10
-             db "Range: |x| <= 1000, |y| <= 1000. An empty line finishes the current part.", 13, 10, 0
-msgPart1     db 13, 10, "Part 1: integer FPU instructions (x, y are integers, result is rounded)", 13, 10, 0
-msgPart2     db 13, 10, "Part 2: real FPU instructions (x, y are real numbers)", 13, 10, 0
-msgX         db "x = ", 0
-msgY         db "y = ", 0
-msgBranch1   db "Branch 1: x - y > 9, f = 2xy + 3", 13, 10, 0
-msgBranch2   db "Branch 2: x - y < -6, f = 3y^2 / (x^2 + 2y + 1)", 13, 10, 0
-msgBranch3   db "Branch 3: -6 <= x - y <= 9, f = 2x^2 - 2y + 1", 13, 10, 0
-msgValue     db "f(x, y) = ", 0
-msgCRLF      db 13, 10, 0
-msgDivZero   db "Error: division by zero (x^2 + 2y + 1 = 0).", 13, 10, 0
-msgBadNumber db "Error: this is not a number.", 13, 10, 0
-msgRange     db "Error: the value is out of range [-1000; 1000].", 13, 10, 0
-msgBye       db 13, 10, "The program is finished.", 13, 10, 0
+T_TITLE     db "Laboratory work No. 4. Variant 4", 13, 10, 13, 10, 0
+T_TASK      db "Calculate f(x, y):", 13, 10
+            db "  2xy + 3                  if x - y > 9", 13, 10
+            db "  3y^2 / (x^2 + 2y + 1)    if x - y < -6", 13, 10
+            db "  2x^2 - 2y + 1            if -6 <= x - y <= 9", 13, 10
+            db "Limits: |x| <= 1000, |y| <= 1000. Empty line -> next part.", 13, 10, 0
+T_PART1     db 13, 10, "--- Part 1: Integer FPU instructions ---", 13, 10, 0
+T_PART2     db 13, 10, "--- Part 2: Real FPU instructions ---", 13, 10, 0
+T_X         db "Enter x: ", 0
+T_Y         db "Enter y: ", 0
+T_BR1       db "Branch 1 (x - y > 9): f = 2xy + 3", 13, 10, 0
+T_BR2       db "Branch 2 (x - y < -6): f = 3y^2 / (x^2 + 2y + 1)", 13, 10, 0
+T_BR3       db "Branch 3 (-6 <= x - y <= 9): f = 2x^2 - 2y + 1", 13, 10, 0
+T_RES       db "Result: f = ", 0
+T_NL        db 13, 10, 0
+T_DIV0      db "Error: division by zero!", 13, 10, 0
+T_BAD       db "Error: invalid number.", 13, 10, 0
+T_RANGE     db "Error: value out of range [-1000, 1000].", 13, 10, 0
+T_END       db 13, 10, "Work finished.", 13, 10, 0
 
 .code
 
-; ---------------------------------------------------------------------------
-; PrintStr - prints a zero-terminated string to the console.
-; In:  rcx = address of the string
-; ---------------------------------------------------------------------------
-PrintStr PROC
+; --- Output a zero-terminated string ---
+OutputStr PROC
     push rbx
     push rsi
     sub  rsp, 38h
-
     mov  rsi, rcx
     xor  ebx, ebx
-ps_len:
+os_len:
     cmp  byte ptr [rsi + rbx], 0
-    je   ps_write
+    je   os_write
     inc  ebx
-    jmp  ps_len
-
-ps_write:
-    mov  ecx, STD_OUTPUT_HANDLE
+    jmp  os_len
+os_write:
+    mov  ecx, STD_OUT_HANDLE
     call GetStdHandle
     mov  rcx, rax
     mov  rdx, rsi
@@ -89,28 +78,21 @@ ps_write:
     lea  r9, [rsp + 28h]
     mov  qword ptr [rsp + 20h], 0
     call WriteFile
-
     add  rsp, 38h
     pop  rsi
     pop  rbx
     ret
-PrintStr ENDP
+OutputStr ENDP
 
-; ---------------------------------------------------------------------------
-; InputLine - reads a line from the console and removes the end of line.
-; In:  rcx = address of the buffer, edx = size of the buffer
-; Out: eax = length of the string, or -1 if nothing was read
-; ---------------------------------------------------------------------------
-InputLine PROC
+; --- Read a line and strip CR/LF ---
+ReadLine PROC
     push rbx
     push rsi
     sub  rsp, 38h
-
     mov  rsi, rcx
     mov  ebx, edx
     dec  ebx
-
-    mov  ecx, STD_INPUT_HANDLE
+    mov  ecx, STD_IN_HANDLE
     call GetStdHandle
     mov  rcx, rax
     mov  rdx, rsi
@@ -119,139 +101,121 @@ InputLine PROC
     mov  qword ptr [rsp + 20h], 0
     call ReadFile
     test eax, eax
-    jz   il_fail
-
+    jz   rl_fail
     mov  ecx, dword ptr [rsp + 28h]
     test ecx, ecx
-    jz   il_fail
+    jz   rl_fail
     xor  eax, eax
-il_scan:
+rl_scan:
     cmp  eax, ecx
-    jae  il_end
+    jae  rl_end
     mov  dl, byte ptr [rsi + rax]
     cmp  dl, 13
-    je   il_end
+    je   rl_end
     cmp  dl, 10
-    je   il_end
+    je   rl_end
     inc  eax
-    jmp  il_scan
-
-il_end:
+    jmp  rl_scan
+rl_end:
     mov  byte ptr [rsi + rax], 0
-    jmp  il_exit
-
-il_fail:
+    jmp  rl_exit
+rl_fail:
     mov  eax, -1
-
-il_exit:
+rl_exit:
     add  rsp, 38h
     pop  rsi
     pop  rbx
     ret
-InputLine ENDP
+ReadLine ENDP
 
-; ---------------------------------------------------------------------------
-; PutUInt - writes an unsigned number as decimal digits.
-; In:  rcx = destination, rax = number
-; Out: rcx = address after the last digit
-; ---------------------------------------------------------------------------
-PutUInt PROC
+; --- Convert unsigned integer to decimal string ---
+UIntToStr PROC
     mov  r11, rax
     mov  r8d, 1
     mov  r10d, 10
-pu_count:
+uts_cnt:
     cmp  rax, 10
-    jb   pu_write
+    jb   uts_wr
     xor  edx, edx
     div  r10
     inc  r8d
-    jmp  pu_count
-pu_write:
+    jmp  uts_cnt
+uts_wr:
     mov  rax, r11
     lea  r9, [rcx + r8]
     mov  r11, r9
-pu_digit:
+uts_digit:
     xor  edx, edx
     div  r10
     add  dl, '0'
     dec  r9
     mov  byte ptr [r9], dl
     cmp  r9, rcx
-    ja   pu_digit
+    ja   uts_digit
     mov  rcx, r11
     ret
-PutUInt ENDP
+UIntToStr ENDP
 
-; ---------------------------------------------------------------------------
-; IntToStr - converts a signed 32-bit integer to a zero-terminated string.
-; In:  rcx = destination, edx = number
-; ---------------------------------------------------------------------------
-IntToStr PROC
+; --- Convert signed integer to string ---
+SIntToStr PROC
     movsxd rax, edx
     test rax, rax
-    jns  is_pos
+    jns  sst_pos
     mov  byte ptr [rcx], '-'
     inc  rcx
     neg  rax
-is_pos:
-    call PutUInt
+sst_pos:
+    call UIntToStr
     mov  byte ptr [rcx], 0
     ret
-IntToStr ENDP
+SIntToStr ENDP
 
-; ---------------------------------------------------------------------------
-; RealToStr - converts a REAL8 number to a string with 6 digits after the point.
-; In:  rcx = destination, rdx = address of the REAL8 number
-; ---------------------------------------------------------------------------
+; --- Convert REAL8 to string with 6 fractional digits ---
 RealToStr PROC
     sub  rsp, 28h
     fld  qword ptr [rdx]
-    fmul qword ptr [kR1e6]
+    fmul qword ptr [R_MUL]
     frndint
     fistp qword ptr [rsp + 20h]
     mov  rax, qword ptr [rsp + 20h]
     test rax, rax
-    jns  rs_pos
+    jns  rst_pos
     mov  byte ptr [rcx], '-'
     inc  rcx
     neg  rax
-rs_pos:
+rst_pos:
     xor  edx, edx
     mov  r10d, 1000000
     div  r10
     mov  qword ptr [rsp + 20h], rdx
-    call PutUInt
+    call UIntToStr
     mov  byte ptr [rcx], '.'
     inc  rcx
     mov  rax, qword ptr [rsp + 20h]
     lea  r9, [rcx + 6]
     mov  r11, r9
     mov  r10d, 10
-rs_frac:
+rst_frac:
     xor  edx, edx
     div  r10
     add  dl, '0'
     dec  r9
     mov  byte ptr [r9], dl
     cmp  r9, rcx
-    ja   rs_frac
+    ja   rst_frac
     mov  byte ptr [r11], 0
     add  rsp, 28h
     ret
 RealToStr ENDP
 
-; ---------------------------------------------------------------------------
-; ParseInt - converts a string to an integer in the range [-1000; 1000].
-; In:  rcx = string, rdx = address of the DWORD result
-; Out: eax = 0 - ok, 1 - not a number, 2 - out of range
-; ---------------------------------------------------------------------------
+; --- Parse integer from string ---
 ParseInt PROC
-pi_sp1:
+pi_space1:
     cmp  byte ptr [rcx], ' '
-    jne  pi_sign
+    jne  pi_sgn
     inc  rcx
-    jmp  pi_sp1
-pi_sign:
+    jmp  pi_space1
+pi_sgn:
     xor  r8d, r8d
     mov  al, byte ptr [rcx]
     cmp  al, '-'
@@ -282,11 +246,11 @@ pi_next:
 pi_after:
     test r10d, r10d
     jz   pi_bad
-pi_sp2:
+pi_space2:
     cmp  byte ptr [rcx], ' '
     jne  pi_end
     inc  rcx
-    jmp  pi_sp2
+    jmp  pi_space2
 pi_end:
     cmp  byte ptr [rcx], 0
     jne  pi_bad
@@ -307,21 +271,17 @@ pi_range:
     ret
 ParseInt ENDP
 
-; ---------------------------------------------------------------------------
-; ParseReal - converts a string "[-]ddd[.ddd]" to a REAL8 number in [-1000; 1000].
-; In:  rcx = string, rdx = address of the REAL8 result
-; Out: eax = 0 - ok, 1 - not a number, 2 - out of range
-; ---------------------------------------------------------------------------
+; --- Parse real number from string ---
 ParseReal PROC
     push rbx
     sub  rsp, 30h
     mov  rbx, rdx
-pr_sp1:
+pr_space1:
     cmp  byte ptr [rcx], ' '
-    jne  pr_sign
+    jne  pr_sgn
     inc  rcx
-    jmp  pr_sp1
-pr_sign:
+    jmp  pr_space1
+pr_sgn:
     xor  r8d, r8d
     mov  al, byte ptr [rcx]
     cmp  al, '-'
@@ -360,15 +320,14 @@ pr_dot:
 pr_after:
     test r10d, r10d
     jz   pr_bad
-pr_sp2:
+pr_space2:
     cmp  byte ptr [rcx], ' '
     jne  pr_end
     inc  rcx
-    jmp  pr_sp2
+    jmp  pr_space2
 pr_end:
     cmp  byte ptr [rcx], 0
     jne  pr_bad
-
     fldz
     mov  rcx, r9
     mov  edx, r10d
@@ -381,7 +340,7 @@ pr_calc:
     je   pr_calc
     sub  eax, '0'
     mov  dword ptr [rsp + 20h], eax
-    fimul dword ptr [kI10]
+    fimul dword ptr [C_10]
     fiadd dword ptr [rsp + 20h]
     dec  edx
     jnz  pr_calc
@@ -389,7 +348,7 @@ pr_calc:
     test ecx, ecx
     jz   pr_neg
 pr_scale:
-    fidiv dword ptr [kI10]
+    fidiv dword ptr [C_10]
     dec  ecx
     jnz  pr_scale
 pr_neg:
@@ -399,7 +358,7 @@ pr_neg:
 pr_check:
     fld  st(0)
     fabs
-    fild dword ptr [kI1000]
+    fild dword ptr [C_1000]
     fcomip st(0), st(1)
     fstp st(0)
     jb   pr_range
@@ -418,394 +377,375 @@ pr_exit:
     ret
 ParseReal ENDP
 
-; ---------------------------------------------------------------------------
-; ReadInt / ReadReal - print a prompt, read a line and convert it.
-; In:  rcx = prompt, rdx = line buffer, r8 = address of the result
-; Out: eax = 0 - ok, 1 - empty line (end of the part), 2 - error
-; ---------------------------------------------------------------------------
-ReadInt PROC
+; --- Read integer with prompt ---
+ReadIntValue PROC
     push rbx
     push rsi
     sub  rsp, 28h
     mov  rbx, rdx
     mov  rsi, r8
-    call PrintStr
+    call OutputStr
     mov  rcx, rbx
-    mov  edx, INPUT_BUF_SIZE
-    call InputLine
+    mov  edx, BUF_SIZE
+    call ReadLine
     test eax, eax
     jle  ri_end
     mov  rcx, rbx
     mov  rdx, rsi
     call ParseInt
     test eax, eax
-    jz   ri_exit
-    lea  rcx, msgBadNumber
+    jz   ri_ok
+    lea  rcx, T_BAD
     cmp  eax, 2
     jne  ri_msg
-    lea  rcx, msgRange
+    lea  rcx, T_RANGE
 ri_msg:
-    call PrintStr
+    call OutputStr
     mov  eax, 2
-    jmp  ri_exit
+    jmp  ri_ok
 ri_end:
     mov  eax, 1
-ri_exit:
+ri_ok:
     add  rsp, 28h
     pop  rsi
     pop  rbx
     ret
-ReadInt ENDP
+ReadIntValue ENDP
 
-ReadReal PROC
+; --- Read real with prompt ---
+ReadRealValue PROC
     push rbx
     push rsi
     sub  rsp, 28h
     mov  rbx, rdx
     mov  rsi, r8
-    call PrintStr
+    call OutputStr
     mov  rcx, rbx
-    mov  edx, INPUT_BUF_SIZE
-    call InputLine
+    mov  edx, BUF_SIZE
+    call ReadLine
     test eax, eax
     jle  rr_end
     mov  rcx, rbx
     mov  rdx, rsi
     call ParseReal
     test eax, eax
-    jz   rr_exit
-    lea  rcx, msgBadNumber
+    jz   rr_ok
+    lea  rcx, T_BAD
     cmp  eax, 2
     jne  rr_msg
-    lea  rcx, msgRange
+    lea  rcx, T_RANGE
 rr_msg:
-    call PrintStr
+    call OutputStr
     mov  eax, 2
-    jmp  rr_exit
+    jmp  rr_ok
 rr_end:
     mov  eax, 1
-rr_exit:
+rr_ok:
     add  rsp, 28h
     pop  rsi
     pop  rbx
     ret
-ReadReal ENDP
+ReadRealValue ENDP
 
-; ---------------------------------------------------------------------------
-; PrintBranch - prints the description of the branch.
-; In:  ecx = number of the branch (1 - 3)
-; ---------------------------------------------------------------------------
-PrintBranch PROC
+; --- Print branch description ---
+PrintBranchDesc PROC
     sub  rsp, 28h
-    lea  rdx, msgBranch1
+    lea  rdx, T_BR1
     cmp  ecx, 2
-    jne  pb_c3
-    lea  rdx, msgBranch2
-pb_c3:
+    jne  pb3
+    lea  rdx, T_BR2
+pb3:
     cmp  ecx, 3
-    jne  pb_print
-    lea  rdx, msgBranch3
-pb_print:
+    jne  pbprint
+    lea  rdx, T_BR3
+pbprint:
     mov  rcx, rdx
-    call PrintStr
+    call OutputStr
     add  rsp, 28h
     ret
-PrintBranch ENDP
+PrintBranchDesc ENDP
 
 ; ===========================================================================
-; Part 1. Integer FPU instructions.
-; In:  rcx = address of x (DWORD), rdx = address of y (DWORD),
-;      r8 = address of the result (DWORD)
-; Out: eax = 0 - ok, 1 - division by zero
+; PART 1: Integer FPU instructions
 ; ===========================================================================
 
-; f = 2xy + 3
-BranchInt1 PROC
+; Branch 1: f = 2xy + 3
+IntBranch1 PROC
     fild  dword ptr [rcx]
-    fimul dword ptr [rdx]       ; x*y
-    fimul dword ptr [kI2]       ; 2xy
-    fiadd dword ptr [kI3]       ; 2xy + 3
+    fimul dword ptr [rdx]
+    fimul dword ptr [C_2]
+    fiadd dword ptr [C_3]
     fistp dword ptr [r8]
     xor  eax, eax
     ret
-BranchInt1 ENDP
+IntBranch1 ENDP
 
-; f = 3y^2 / (x^2 + 2y + 1)
-BranchInt2 PROC
+; Branch 2: f = 3y^2 / (x^2 + 2y + 1)
+IntBranch2 PROC
     sub  rsp, 28h
     fild  dword ptr [rdx]
-    fimul dword ptr [rdx]       ; y^2
-    fimul dword ptr [kI3]       ; 3y^2
-    fild  dword ptr [rcx]
-    fimul dword ptr [rcx]       ; x^2
-    fild  dword ptr [rdx]
-    fimul dword ptr [kI2]       ; 2y
-    faddp st(1), st(0)          ; x^2 + 2y
-    fiadd dword ptr [kI1]       ; x^2 + 2y + 1
-    fistp dword ptr [rsp + 20h] ; denominator
-    cmp  dword ptr [rsp + 20h], 0
-    je   bi2_zero
-    fidiv dword ptr [rsp + 20h] ; 3y^2 / (x^2 + 2y + 1)
-    fistp dword ptr [r8]
-    xor  eax, eax
-    jmp  bi2_exit
-bi2_zero:
-    mov  eax, 1
-bi2_exit:
-    add  rsp, 28h
-    ret
-BranchInt2 ENDP
-
-; f = 2x^2 - 2y + 1
-BranchInt3 PROC
+    fimul dword ptr [rdx]
+    fimul dword ptr [C_3]
     fild  dword ptr [rcx]
     fimul dword ptr [rcx]
-    fimul dword ptr [kI2]       ; 2x^2
     fild  dword ptr [rdx]
-    fimul dword ptr [kI2]       ; 2y
-    fsubp st(1), st(0)          ; 2x^2 - 2y
-    fiadd dword ptr [kI1]       ; 2x^2 - 2y + 1
+    fimul dword ptr [C_2]
+    faddp st(1), st(0)
+    fiadd dword ptr [C_1]
+    fistp dword ptr [rsp + 20h]
+    cmp  dword ptr [rsp + 20h], 0
+    je   ib2_zero
+    fidiv dword ptr [rsp + 20h]
+    fistp dword ptr [r8]
+    xor  eax, eax
+    jmp  ib2_exit
+ib2_zero:
+    mov  eax, 1
+ib2_exit:
+    add  rsp, 28h
+    ret
+IntBranch2 ENDP
+
+; Branch 3: f = 2x^2 - 2y + 1
+IntBranch3 PROC
+    fild  dword ptr [rcx]
+    fimul dword ptr [rcx]
+    fimul dword ptr [C_2]
+    fild  dword ptr [rdx]
+    fimul dword ptr [C_2]
+    fsubp st(1), st(0)
+    fiadd dword ptr [C_1]
     fistp dword ptr [r8]
     xor  eax, eax
     ret
-BranchInt3 ENDP
+IntBranch3 ENDP
 
-; CalcInt - chooses the branch by x - y and runs it.
-CalcInt PROC
+; --- Branch selector for integers ---
+IntCalc PROC
     sub  rsp, 28h
     fild  dword ptr [rcx]
-    fisub dword ptr [rdx]       ; st0 = x - y
-    fild  dword ptr [kI9]
-    fcomip st(0), st(1)         ; compare 9 with x - y
-    jb   ci_b1                  ; if 9 < x-y -> x-y > 9
-    fild  dword ptr [kIm6]
-    fcomip st(0), st(1)         ; compare -6 with x - y
-    ja   ci_b2                  ; if -6 > x-y -> x-y < -6
+    fisub dword ptr [rdx]
+    fild  dword ptr [C_9]
+    fcomip st(0), st(1)
+    jb   ic_b1
+    fild  dword ptr [C_M6]
+    fcomip st(0), st(1)
+    ja   ic_b2
     fstp st(0)
-    call BranchInt3
+    call IntBranch3
     mov  edx, 3
-    jmp  ci_exit
-ci_b1:
+    jmp  ic_exit
+ic_b1:
     fstp st(0)
-    call BranchInt1
+    call IntBranch1
     mov  edx, 1
-    jmp  ci_exit
-ci_b2:
+    jmp  ic_exit
+ic_b2:
     fstp st(0)
-    call BranchInt2
+    call IntBranch2
     mov  edx, 2
-ci_exit:
+ic_exit:
     add  rsp, 28h
     ret
-CalcInt ENDP
+IntCalc ENDP
 
 ; ===========================================================================
-; Part 2. Real FPU instructions.
+; PART 2: Real FPU instructions
 ; ===========================================================================
 
-; f = 2xy + 3
-BranchReal1 PROC
+; Branch 1: f = 2xy + 3
+RealBranch1 PROC
     fld  qword ptr [rcx]
-    fmul qword ptr [rdx]        ; x*y
-    fmul qword ptr [kR2]        ; 2xy
-    fld  qword ptr [kR3]
-    faddp st(1), st(0)          ; 2xy + 3
+    fmul qword ptr [rdx]
+    fmul qword ptr [R_2]
+    fld  qword ptr [R_3]
+    faddp st(1), st(0)
     fstp qword ptr [r8]
     xor  eax, eax
     ret
-BranchReal1 ENDP
+RealBranch1 ENDP
 
-; f = 3y^2 / (x^2 + 2y + 1)
-BranchReal2 PROC
+; Branch 2: f = 3y^2 / (x^2 + 2y + 1)
+RealBranch2 PROC
     fld  qword ptr [rdx]
-    fmul qword ptr [rdx]        ; y^2
-    fmul qword ptr [kR3]        ; 3y^2
+    fmul qword ptr [rdx]
+    fmul qword ptr [R_3]
     fld  qword ptr [rcx]
-    fmul qword ptr [rcx]        ; x^2
+    fmul qword ptr [rcx]
     fld  qword ptr [rdx]
-    fmul qword ptr [kR2]        ; 2y
-    faddp st(1), st(0)          ; x^2 + 2y
+    fmul qword ptr [R_2]
+    faddp st(1), st(0)
     fld1
-    faddp st(1), st(0)          ; x^2 + 2y + 1
+    faddp st(1), st(0)
     fldz
-    fcomip st(0), st(1)         ; check denom == 0
-    je   br2_zero
-    fdivp st(1), st(0)          ; 3y^2 / (x^2 + 2y + 1)
+    fcomip st(0), st(1)
+    je   rb2_zero
+    fdivp st(1), st(0)
     fstp qword ptr [r8]
     xor  eax, eax
     ret
-br2_zero:
+rb2_zero:
     fstp st(0)
     fstp st(0)
     mov  eax, 1
     ret
-BranchReal2 ENDP
+RealBranch2 ENDP
 
-; f = 2x^2 - 2y + 1
-BranchReal3 PROC
+; Branch 3: f = 2x^2 - 2y + 1
+RealBranch3 PROC
     fld  qword ptr [rcx]
     fmul qword ptr [rcx]
-    fmul qword ptr [kR2]        ; 2x^2
+    fmul qword ptr [R_2]
     fld  qword ptr [rdx]
-    fmul qword ptr [kR2]        ; 2y
-    fsubp st(1), st(0)          ; 2x^2 - 2y
+    fmul qword ptr [R_2]
+    fsubp st(1), st(0)
     fld1
-    faddp st(1), st(0)          ; 2x^2 - 2y + 1
+    faddp st(1), st(0)
     fstp qword ptr [r8]
     xor  eax, eax
     ret
-BranchReal3 ENDP
+RealBranch3 ENDP
 
-; CalcReal - chooses the branch by x - y and runs it.
-CalcReal PROC
+; --- Branch selector for reals ---
+RealCalc PROC
     sub  rsp, 28h
     fld  qword ptr [rcx]
-    fsub qword ptr [rdx]        ; st0 = x - y
-    fld  qword ptr [kR9]
-    fcomip st(0), st(1)         ; compare 9 with x - y
-    jb   cr_b1                  ; 9 < x-y -> x-y > 9
-    fld  qword ptr [kRm6]
-    fcomip st(0), st(1)         ; compare -6 with x - y
-    ja   cr_b2                  ; -6 > x-y -> x-y < -6
+    fsub qword ptr [rdx]
+    fld  qword ptr [R_9]
+    fcomip st(0), st(1)
+    jb   rc_b1
+    fld  qword ptr [R_M6]
+    fcomip st(0), st(1)
+    ja   rc_b2
     fstp st(0)
-    call BranchReal3
+    call RealBranch3
     mov  edx, 3
-    jmp  cr_exit
-cr_b1:
+    jmp  rc_exit
+rc_b1:
     fstp st(0)
-    call BranchReal1
+    call RealBranch1
     mov  edx, 1
-    jmp  cr_exit
-cr_b2:
+    jmp  rc_exit
+rc_b2:
     fstp st(0)
-    call BranchReal2
+    call RealBranch2
     mov  edx, 2
-cr_exit:
+rc_exit:
     add  rsp, 28h
     ret
-CalcReal ENDP
+RealCalc ENDP
 
-; ---------------------------------------------------------------------------
-; RunIntPart / RunRealPart - input, calculation and output.
-; ---------------------------------------------------------------------------
-RunIntPart PROC
+; --- Run integer part ---
+RunIntSection PROC
     sub  rsp, 158h
-    lea  rcx, msgPart1
-    call PrintStr
-ip_loop:
-    lea  rcx, msgX
+    lea  rcx, T_PART1
+    call OutputStr
+ri_loop:
+    lea  rcx, T_X
     lea  rdx, [rsp + 20h]
     lea  r8, [rsp + 120h]
-    call ReadInt
+    call ReadIntValue
     cmp  eax, 1
-    je   ip_done
+    je   ri_done
     test eax, eax
-    jnz  ip_loop
-    lea  rcx, msgY
+    jnz  ri_loop
+    lea  rcx, T_Y
     lea  rdx, [rsp + 20h]
     lea  r8, [rsp + 124h]
-    call ReadInt
+    call ReadIntValue
     cmp  eax, 1
-    je   ip_done
+    je   ri_done
     test eax, eax
-    jnz  ip_loop
-
+    jnz  ri_loop
     lea  rcx, [rsp + 120h]
     lea  rdx, [rsp + 124h]
     lea  r8, [rsp + 128h]
-    call CalcInt
+    call IntCalc
     mov  dword ptr [rsp + 12Ch], eax
     mov  ecx, edx
-    call PrintBranch
+    call PrintBranchDesc
     cmp  dword ptr [rsp + 12Ch], 0
-    jne  ip_zero
-
+    jne  ri_err
     lea  rcx, [rsp + 130h]
     mov  edx, dword ptr [rsp + 128h]
-    call IntToStr
-    lea  rcx, msgValue
-    call PrintStr
+    call SIntToStr
+    lea  rcx, T_RES
+    call OutputStr
     lea  rcx, [rsp + 130h]
-    call PrintStr
-    lea  rcx, msgCRLF
-    call PrintStr
-    jmp  ip_loop
-ip_zero:
-    lea  rcx, msgDivZero
-    call PrintStr
-    jmp  ip_loop
-ip_done:
+    call OutputStr
+    lea  rcx, T_NL
+    call OutputStr
+    jmp  ri_loop
+ri_err:
+    lea  rcx, T_DIV0
+    call OutputStr
+    jmp  ri_loop
+ri_done:
     add  rsp, 158h
     ret
-RunIntPart ENDP
+RunIntSection ENDP
 
-RunRealPart PROC
+; --- Run real part ---
+RunRealSection PROC
     sub  rsp, 168h
-    lea  rcx, msgPart2
-    call PrintStr
-rp_loop:
-    lea  rcx, msgX
+    lea  rcx, T_PART2
+    call OutputStr
+rr_loop:
+    lea  rcx, T_X
     lea  rdx, [rsp + 20h]
     lea  r8, [rsp + 120h]
-    call ReadReal
+    call ReadRealValue
     cmp  eax, 1
-    je   rp_done
+    je   rr_done
     test eax, eax
-    jnz  rp_loop
-    lea  rcx, msgY
+    jnz  rr_loop
+    lea  rcx, T_Y
     lea  rdx, [rsp + 20h]
     lea  r8, [rsp + 128h]
-    call ReadReal
+    call ReadRealValue
     cmp  eax, 1
-    je   rp_done
+    je   rr_done
     test eax, eax
-    jnz  rp_loop
-
+    jnz  rr_loop
     lea  rcx, [rsp + 120h]
     lea  rdx, [rsp + 128h]
     lea  r8, [rsp + 130h]
-    call CalcReal
+    call RealCalc
     mov  dword ptr [rsp + 138h], eax
     mov  ecx, edx
-    call PrintBranch
+    call PrintBranchDesc
     cmp  dword ptr [rsp + 138h], 0
-    jne  rp_zero
-
+    jne  rr_err
     lea  rcx, [rsp + 140h]
     lea  rdx, [rsp + 130h]
     call RealToStr
-    lea  rcx, msgValue
-    call PrintStr
+    lea  rcx, T_RES
+    call OutputStr
     lea  rcx, [rsp + 140h]
-    call PrintStr
-    lea  rcx, msgCRLF
-    call PrintStr
-    jmp  rp_loop
-rp_zero:
-    lea  rcx, msgDivZero
-    call PrintStr
-    jmp  rp_loop
-rp_done:
+    call OutputStr
+    lea  rcx, T_NL
+    call OutputStr
+    jmp  rr_loop
+rr_err:
+    lea  rcx, T_DIV0
+    call OutputStr
+    jmp  rr_loop
+rr_done:
     add  rsp, 168h
     ret
-RunRealPart ENDP
+RunRealSection ENDP
 
-; ---------------------------------------------------------------------------
-; main - the program entry point.
-; ---------------------------------------------------------------------------
+; --- Entry point ---
 main PROC
     sub  rsp, 28h
-
-    lea  rcx, msgTitle
-    call PrintStr
-    lea  rcx, msgTask
-    call PrintStr
-
-    call RunIntPart
-    call RunRealPart
-
-    lea  rcx, msgBye
-    call PrintStr
+    lea  rcx, T_TITLE
+    call OutputStr
+    lea  rcx, T_TASK
+    call OutputStr
+    call RunIntSection
+    call RunRealSection
+    lea  rcx, T_END
+    call OutputStr
     xor  ecx, ecx
     call ExitProcess
 main ENDP
